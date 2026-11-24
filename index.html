@@ -150,11 +150,12 @@
     .standings th:first-child, .standings td:first-child { width: 14%; }
     .standings .count { width: 21%; text-align: right; }
     .standings .score { width: 25%; text-align: right; }
-    .standings tbody tr:first-child { background: var(--lab-top-row); }
-    .standings tbody tr:first-child .rank { box-shadow: inset 3px 0 var(--lab-accent); }
-    .standings tbody tr:first-child .score, .standings tbody tr:first-child .rank { color: var(--lab-accent); font-weight: 650; }
+    .standings tbody tr[data-rank="1"] { background: var(--lab-top-row); }
+    .standings tbody tr[data-rank="1"] .rank { box-shadow: inset 3px 0 var(--lab-accent); }
+    .standings tbody tr[data-rank="1"] :is(.score, .rank) { color: var(--lab-accent); font-weight: 650; }
     .rank, .score, .count { font-variant-numeric: tabular-nums; }
     tbody .rank, tbody .score, tbody .count { font-family: var(--lab-mono); }
+    tbody .score { overflow-wrap: anywhere; }
     tbody .rank, tbody .count { color: var(--lab-muted); }
     .own-team { margin-left: 0.45rem; color: var(--lab-accent); font-size: 0.75rem; white-space: nowrap; }
 
@@ -197,6 +198,10 @@
     .submission-history { margin-top: 1.4rem; }
     .submission-history th:first-child { width: 57%; }
     .submission-history th:last-child, .submission-history td:last-child { text-align: right; }
+    .method-title { display: block; margin-top: 0.1rem; font-weight: 400; }
+    .submission-description { margin-top: 0.4rem; font-weight: 400; }
+    .submission-description summary { cursor: pointer; color: var(--lab-accent); }
+    .submission-description p { margin-top: 0.25rem; white-space: pre-wrap; }
     .passed { color: var(--lab-success); }
     .failed { color: var(--lab-danger); }
     pre {
@@ -346,13 +351,17 @@
               <p class="small file-name" id="file-name">尚未选择文件</p>
             </div>
             <div class="upload-footer">
-              <button class="button primary" type="button" id="validate-button" disabled>提交并校验</button>
+              <div class="button-row">
+                <button class="button primary" type="button" id="validate-button" disabled>提交并校验</button>
+                <button class="button outline" type="button" id="speedrun-button" disabled>试读 Speedrun 日志</button>
+              </div>
               <p class="small inline-status" id="file-status" role="status"></p>
             </div>
           </section>
           <section class="card" aria-labelledby="template-title">
             <h2 id="template-title">日志模板</h2>
-            <p class="small">暂定样例 · <code>kernel-studio_run-006.txt</code></p>
+            <p class="small">文件名按队伍、模型、数据、参数和运行编号分段。</p>
+            <p class="small"><code id="sample-filename"></code></p>
             <pre id="sample-text" aria-label="训练日志示例"></pre>
           </section>
         </div>
@@ -360,7 +369,7 @@
           <div class="section-heading"><h2 id="history-title">本队提交记录</h2></div>
           <div class="table-frame">
             <table aria-labelledby="history-title">
-              <thead><tr><th scope="col">文件名</th><th scope="col">状态</th><th scope="col">Test Loss</th></tr></thead>
+              <thead><tr><th scope="col">提交</th><th scope="col">状态</th><th scope="col">Test Loss</th></tr></thead>
               <tbody id="submission-history"></tbody>
             </table>
           </div>
@@ -404,9 +413,11 @@
     </div>
     <dl class="rules">
       <dt>测试集</dt><dd>由课程统一指定，正式版本待发布。</dd>
-      <dt>日志格式</dt><dd>使用 .txt。文件命名和字段规范待定。日志顶部预留 <code>nvidia-smi</code>、数据集、预处理 JSON 和模型架构，正文记录每一步的 loss。</dd>
-      <dt>计分</dt><dd>服务端校验通过后读取日志里最后一条 Test Loss。每队取有效提交中的最低分上榜。</dd>
-      <dt>原型校验</dt><dd>在当前浏览器读取 .txt 文件并检查最后一条 Test Loss。</dd>
+      <dt>短标题与方法描述</dt><dd><code>Title</code> 用一行概括核心改进。紧接着在 <code>Description</code> 写相对基线的模型、数据和参数改动，续行缩进。榜单显示最佳提交的短标题，提交记录可展开完整描述。</dd>
+      <dt>文件名</dt><dd><code>team__model-tag__data-tag__params-tag__run-006.txt</code>。各段用英文小写、数字和单连字符。某一类沿用基线时用 <code>base</code>。</dd>
+      <dt>日志内容</dt><dd>记录数据集、预处理 JSON、模型架构和训练参数 JSON，再附上 <code>nvidia-smi</code> 输出。在 <code>[Training]</code> 后按步记录训练 loss，并打印测试集的 <code>test_loss</code>。</dd>
+      <dt>计分</dt><dd>校验通过后取日志中最后一条 Test Loss。每队按历史最低有效分升序排名，同分并列。</dd>
+      <dt>Speedrun 试读</dt><dd>选择 Speedrun 的原始 .txt 文件可试读最后一条 Validation Loss。试读为独立的本地解析演示。</dd>
     </dl>
   </dialog>
 
@@ -420,7 +431,7 @@
       { name: "Gradient Club", submitted: 8, score: 0.2481 },
       { name: "Half Precision", submitted: 5, score: 0.2536 },
       { name: "Latent Space", submitted: 7, score: 0.2712 },
-      { name: teamName, submitted: 5, score: 0.2867 },
+      { name: teamName, submitted: 5, score: 0.2867, title: "调整学习率" },
       { name: "Batch Size One", submitted: 3, score: 0.3098 },
       { name: "Zero Init", submitted: 4, score: 0.3214 },
     ];
@@ -432,22 +443,31 @@
       { name: "演示同学 E", team: "Latent Space" },
     ];
     const records = [
-      { filename: "kernel-studio_run-005.txt", status: "已通过", score: 0.2867 },
-      { filename: "kernel-studio_run-004.txt", status: "未通过", score: null },
+      { filename: "kernel-studio__model-base__data-base__params-lr1e-3__run-005.txt", title: "调整学习率", status: "已通过", score: 0.2867 },
     ];
+    const sampleFilename = "kernel-studio__model-rmsnorm__data-normalize__params-bs256__run-006.txt";
     const sample = [
-      "[nvidia-smi]",
-      "GPU 0: NVIDIA A100 (demo)",
-      "[run]",
-      "dataset: course-demo",
-      'preprocess: {"normalize": true}',
-      "model: MLP(width=256, layers=3)",
+      "Title: RMSNorm + 输入归一化",
+      "Description:",
+      "  Model: 隐层加入 RMSNorm。",
+      "  Data: 输入按训练集统计量归一化。",
+      "  Params: batch size 从 128 调到 256。",
+      "Dataset: course-demo",
+      'Preprocess: {"normalization":"train-stats"}',
+      "Architecture: MLP(width=256, layers=3) + RMSNorm",
+      'Parameters: {"batch_size":256,"learning_rate":0.001}',
       "",
-      "step=1 loss=0.9312",
-      "step=2 loss=0.6170",
-      "Test Loss: 0.4310",
-      "step=3 loss=0.3874",
-      "Test Loss: 0.2394",
+      "[nvidia-smi]",
+      "NVIDIA-SMI 550.54.14 | Driver Version: 550.54.14 | CUDA Version: 12.4",
+      "GPU 0: NVIDIA A100",
+      "",
+      "[Training]",
+      "step:1/3 train_loss:0.9312",
+      "step:2/3 train_loss:0.6170",
+      "step:2/3 test_loss:0.4310",
+      "step:3/3 train_loss:0.3874",
+      "step:3/3 test_loss:0.2394",
+      "peak memory allocated: 240 MiB",
     ].join("\n");
 
     let active = false;
@@ -473,6 +493,11 @@
       $(id).querySelector("h1").focus();
     }
 
+    function formatLoss(score) {
+      const rounded = score.toFixed(4);
+      return Number(rounded) === score ? rounded : String(score);
+    }
+
     function renderBoard() {
       const sorted = [...rankedTeams].sort((a, b) => a.score - b.score);
       const body = $("standings");
@@ -482,6 +507,7 @@
       for (const [index, team] of sorted.entries()) {
         if (index === 0 || team.score !== sorted[index - 1].score) rank = index + 1;
         const row = body.insertRow();
+        row.dataset.rank = rank;
         cell(row, String(rank).padStart(2, "0"), "rank");
         const label = cell(row, team.name, "", "th");
         if (active && team.name === teamName) {
@@ -490,8 +516,14 @@
           own.textContent = "本队";
           label.append(own);
         }
+        if (team.title) {
+          const title = document.createElement("span");
+          title.className = "small method-title";
+          title.textContent = team.title;
+          label.append(title);
+        }
         cell(row, team.submitted, "count");
-        cell(row, team.score.toFixed(4), "score");
+        cell(row, formatLoss(team.score), "score");
       }
     }
 
@@ -532,9 +564,25 @@
       body.replaceChildren();
       for (const record of records) {
         const row = body.insertRow();
-        cell(row, record.filename, "", "th");
+        const label = cell(row, record.title ?? record.filename, "", "th");
+        if (record.title) {
+          const filename = document.createElement("span");
+          filename.className = "small method-title";
+          filename.textContent = record.filename;
+          label.append(filename);
+        }
+        if (record.description) {
+          const details = document.createElement("details");
+          details.className = "small submission-description";
+          const summary = document.createElement("summary");
+          summary.textContent = "方法描述";
+          const description = document.createElement("p");
+          description.textContent = record.description;
+          details.append(summary, description);
+          label.append(details);
+        }
         cell(row, record.status, record.score === null ? "failed" : "passed");
-        cell(row, record.score === null ? "—" : record.score.toFixed(4), "score");
+        cell(row, record.score === null ? "—" : formatLoss(record.score), "score");
       }
     }
 
@@ -554,17 +602,51 @@
       return false;
     }
 
-    function finalTestLoss(log) {
-      const entries = [...log.matchAll(/^[\t ]*test[ _]+loss[\t ]*[:=][\t ]*(.*)$/gim)];
-      if (!entries.length) throw new Error("缺少 Test Loss 记录。");
+    function readLastLoss(log, metric, label, requireStep = false) {
+      const step = String.raw`step[\t ]*[:=][\t ]*\d+(?:/\d+)?[\t ]+`;
+      const prefix = requireStep ? step : `(?:${step})?`;
+      const line = new RegExp(String.raw`^[\t ]*${prefix}${metric}[\t ]*[:=][\t ]*(\S*)`, "gim");
+      let value;
+      for (const entry of log.matchAll(line)) value = entry[1];
+      if (value === undefined) throw new Error(`缺少 ${label} 记录。`);
 
-      const value = entries.at(-1)[1].trim();
       const loss = Number(value);
       const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
       if (!decimal.test(value) || !Number.isFinite(loss)) {
-        throw new Error("最后一条 Test Loss 必须是有限数值。");
+        throw new Error(`最后一条 ${label} 必须是有限数值。`);
       }
       return loss;
+    }
+
+    function parseCourseLog(filename, log) {
+      const tag = "[a-z0-9]+(?:-[a-z0-9]+)*";
+      const filenamePattern = new RegExp(`^${tag}__model-${tag}__data-${tag}__params-${tag}__run-\\d{3,}\\.txt$`);
+      if (!filenamePattern.test(filename)) throw new Error("请按模板分段命名 .txt 文件。");
+
+      const [header, ...sections] = log.trimStart().split(/^\[(nvidia-smi|training)\][\t ]*\r?$/gim);
+      const [gpuTag, gpu, trainingTag, training] = sections;
+      if (sections.length !== 4 || gpuTag.toLowerCase() !== "nvidia-smi" || trainingTag.toLowerCase() !== "training") {
+        throw new Error("请依次提供 [nvidia-smi] 和 [Training]。");
+      }
+      if (!/\bNVIDIA-SMI[\t ]+\d+(?:\.\d+)+/i.test(gpu)) throw new Error("[nvidia-smi] 中缺少命令输出。");
+
+      const intro = header.match(/^Title:[\t ]*(\S[^\r\n]*)\r?\nDescription:([^\r\n]*(?:\r?\n[\t ]+[^\r\n]*)*)/i);
+      const description = intro?.[2].split(/\r?\n/).map((line) => line.trim()).join("\n").trim();
+      if (!description) throw new Error("请在日志开头填写 Title 和 Description。");
+
+      const fields = header.slice(intro[0].length);
+      for (const key of ["Dataset", "Preprocess", "Architecture", "Parameters"]) {
+        const value = fields.match(new RegExp(`^${key}:([^\\r\\n]*)`, "im"))?.[1].trim();
+        if (!value) throw new Error(`缺少 ${key}。`);
+        if (key === "Preprocess" || key === "Parameters") {
+          let parsed;
+          try { parsed = JSON.parse(value); } catch { /* Report a field-specific format error below. */ }
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error(`${key} 必须是一行 JSON 对象。`);
+        }
+      }
+      readLastLoss(training, "(?:train[ _]+)?loss", "Train Loss", true);
+      const score = readLastLoss(training, "test[ _]+loss", "Test Loss");
+      return { title: intro[1].trim(), description, score };
     }
 
     function chooseLog(log) {
@@ -573,33 +655,42 @@
       $("file-status").textContent = "";
       $("file-status").className = "small inline-status";
       $("validate-button").disabled = !log;
+      $("speedrun-button").disabled = !log;
     }
 
-    async function checkLog() {
-      if (!selectedLog || !hasSession()) return;
+    async function checkLog(speedrun = false) {
+      if (!selectedLog || (!speedrun && !hasSession())) return;
       const log = selectedLog;
       const status = $("file-status");
-      const controls = [$("log-file"), $("sample-button"), $("validate-button")];
+      const controls = [$("log-file"), $("sample-button"), $("validate-button"), $("speedrun-button")];
       for (const control of controls) control.disabled = true;
       status.textContent = "正在校验日志…";
       status.className = "small inline-status";
 
       try {
         if (!/\.txt$/i.test(log.name)) throw new Error("请选择 .txt 文件。");
-        const score = finalTestLoss(await log.text());
+        const contents = await log.text();
+        if (speedrun) {
+          const loss = readLastLoss(contents, "(?:val|validation)[ _]+loss", "Validation Loss");
+          status.textContent = `试读完成。最后一条 Validation Loss 为 ${formatLoss(loss)}。`;
+          status.classList.add("passed");
+          return;
+        }
+        const result = parseCourseLog(log.name, contents);
         const team = rankedTeams.find((candidate) => candidate.name === teamName);
         team.submitted += 1;
-        team.score = Math.min(team.score, score);
-        records.unshift({ filename: log.name, status: "已通过", score });
-        status.textContent = `校验通过。最后一条 Test Loss 为 ${score.toFixed(4)}，榜单已更新。`;
+        const improved = result.score < team.score;
+        if (improved) Object.assign(team, { score: result.score, title: result.title });
+        records.unshift({ filename: log.name, status: "已通过", ...result });
+        status.textContent = `校验通过。最后一条 Test Loss 为 ${formatLoss(result.score)}。${improved ? "已刷新本队最佳分。" : "已计入有效提交。"}`;
         status.classList.add("passed");
         renderBoard();
       } catch (error) {
-        records.unshift({ filename: log.name, status: "未通过", score: null });
-        status.textContent = `校验未通过。${error.message}`;
+        if (!speedrun) records.unshift({ filename: log.name, status: "未通过", score: null });
+        status.textContent = `${speedrun ? "试读失败。" : "校验未通过。"}${error.message}`;
         status.classList.add("failed");
       } finally {
-        renderHistory();
+        if (!speedrun) renderHistory();
         selectedLog = null;
         $("log-file").value = "";
         $("log-file").disabled = false;
@@ -662,10 +753,12 @@
     $("log-file").addEventListener("change", (event) => chooseLog(event.target.files[0] ?? null));
     $("sample-button").addEventListener("click", () => {
       $("log-file").value = "";
-      chooseLog({ name: "kernel-studio_run-006.txt", text: async () => sample });
+      chooseLog({ name: sampleFilename, text: async () => sample });
     });
-    $("validate-button").addEventListener("click", checkLog);
+    $("validate-button").addEventListener("click", () => checkLog());
+    $("speedrun-button").addEventListener("click", () => checkLog(true));
 
+    $("sample-filename").textContent = sampleFilename;
     $("sample-text").textContent = sample;
     renderBoard();
     renderTeam();
