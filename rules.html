@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>评测规则 · Model Lab</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --ink: light-dark(#0f1115, #f9fafb);
+      --muted: light-dark(#56616f, #adb6c4);
+      --panel: light-dark(#f1f4f8, #1d222b);
+      --line: light-dark(#dbe2eb, #353d49);
+      --accent: light-dark(#2e5cc5, #91b6ff);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); font: 1rem/1.65 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    header, main { width: min(100% - 2rem, 48rem); margin-inline: auto; }
+    header { display: flex; align-items: center; justify-content: space-between; min-height: 4.25rem; border-bottom: 1px solid var(--line); }
+    a { color: var(--accent); text-underline-offset: 0.2em; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .brand { color: var(--ink); font: bold 1.28rem Georgia, serif; text-decoration: none; }
+    main { padding-block: 1.7rem 2.5rem; }
+    h1 { margin: 0 0 1.4rem; font: 400 clamp(2.2rem, 6vw, 3.3rem)/1.15 Georgia, "Songti SC", SimSun, serif; }
+    section + section { margin-top: 1.45rem; padding-top: 1.15rem; border-top: 1px solid var(--line); }
+    h2 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+    p { margin: 0.48rem 0; color: var(--muted); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { overflow-wrap: anywhere; }
+    pre { margin: 0.7rem 0; padding: 0.8rem; border-radius: 0.55rem; background: var(--panel); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="./index.html">Model Lab</a>
+    <a href="./index.html#submit">提交日志</a>
+  </header>
+  <main>
+    <h1>评测规则</h1>
+    <section aria-labelledby="training">
+      <h2 id="training">从零训练</h2>
+      <p>本实训使用 OLMo 2 1B 的模型结构与课程 tokenizer。训练从随机初始化开始。</p>
+    </section>
+    <section aria-labelledby="submission">
+      <h2 id="submission">提交日志、权重和推理脚本</h2>
+      <p>在「提交日志」选择 TXT 并校验。日志开头用 <code>Title</code> 写核心改动，用 <code>Description</code> 写做法，正文保留源码、<code>nvidia-smi</code> 和每步 <code>train_loss</code>。文件名用英文小写、数字及连字符，沿用基线的段写 <code>base</code>。</p>
+      <p>从课程发放的公共目录开始，按 <code>submissions/&lt;队伍&gt;/&lt;运行编号&gt;/</code> 放置文件。模型目录应含 <code>config.json</code>、tokenizer 文件和完整的 safetensors 权重。</p>
+      <pre>submissions/team-a/run-001/
+  team-a__model-base__data-base__params-base__run-001.txt
+  submission.json
+  model/
+  infer.py</pre>
+      <p>日志通过后，在网页填权重目录和推理脚本的实际相对路径，下载 <code>submission.json</code> 放进去。每队交一个最终版本。</p>
+      <p>推理脚本接受 <code>--model-dir</code> 和 <code>--prompt</code>。上面的例子从运行目录执行以下命令。可以使用这份<a href="./course/infer.py" download>参考脚本</a>。</p>
+      <pre>python infer.py --model-dir model --prompt "Hello"</pre>
+    </section>
+    <section aria-labelledby="score">
+      <h2 id="score">查看成绩</h2>
+      <p>课程组收件后，在固定盲测集上统一评测。成绩发布后，榜单按 Test Loss 从低到高更新，同分并列。</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -108,10 +108,6 @@
     .button-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem 0.8rem; }
 
     .hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(8.6rem, 22%);
-      align-items: center;
-      gap: 1.1rem;
       margin-block: 1rem 1.55rem;
       padding: 1rem;
       border: 1px solid var(--lab-line);
@@ -127,8 +123,6 @@
     }
     .lede { max-width: 32rem; color: var(--lab-muted); }
     .hero .button-row { margin-top: 1.15rem; }
-    .metric { padding: 0.55rem 0 0.55rem 1.05rem; border-left: 1px solid var(--lab-line); }
-    .metric strong { display: block; margin: 0.3rem 0 0.22rem; font: 400 clamp(1.36rem, 3.3vw, 1.9rem)/1.1 var(--lab-serif); }
     .small { color: var(--lab-muted); font-size: 0.87rem; }
 
     .section-heading, .panel-heading {
@@ -228,17 +222,14 @@
     dialog::backdrop { background: var(--lab-backdrop); }
     .dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.7rem; }
     .dialog-head h2 { font-size: 1.9rem; padding-top: 0.2rem; }
-    .rules { margin: 0; }
-    .rules dt { font-weight: 650; margin-top: 0.65rem; }
-    .rules dd { margin: 0.15rem 0 0; color: var(--lab-muted); }
+    .handoff { margin-top: 1.25rem; border-top: 1px solid var(--lab-line); padding-top: 0.9rem; }
+    .handoff .inline-status { overflow-wrap: anywhere; }
     code { font-family: var(--lab-mono); overflow-wrap: anywhere; }
 
     @media (max-width: 540px) {
       .masthead { grid-template-columns: 1fr auto; gap: 0; padding-top: 0.35rem; }
       .nav { grid-area: 2 / 1 / 3 / 3; justify-content: start; gap: 1.4rem; }
       .nav button { min-height: 2.75rem; }
-      .hero { grid-template-columns: minmax(0, 1fr); }
-      .metric { display: none; }
       .display { font-size: clamp(2.28rem, 12.5vw, 3.5rem); }
       .card-grid { grid-template-columns: minmax(0, 1fr); }
       th, td { padding-inline: 0.7rem; }
@@ -269,18 +260,12 @@
           <div class="hero-main">
             <p class="eyebrow">机器学习课程 · 实验项目</p>
             <h1 class="display" id="board-title" lang="en" tabindex="-1">Leaderboard</h1>
-            <p class="lede">训练 dense 语言模型，交付日志和权重。课程组统一盲评，Test Loss 越低越靠前。</p>
+            <p class="lede">从零训练 dense 语言模型，提交训练日志与模型。</p>
             <div class="button-row">
               <button class="button primary" type="button" data-go="submit">日志预检</button>
-              <a class="button outline" href="https://github.com/maskyuanzh/course-leaderboard#readme">实训指南</a>
-              <button class="button outline" type="button" data-rules>评测规则</button>
+              <a class="button outline" href="./rules.html">评测规则</a>
             </div>
           </div>
-          <aside class="metric" aria-label="计分口径">
-            <p class="small">计分口径</p>
-            <strong lang="en">Test Loss</strong>
-            <p class="small">教师统一盲评</p>
-          </aside>
         </div>
 
         <section aria-labelledby="standings-title">
@@ -334,12 +319,9 @@
         <div class="panel-heading">
           <div>
             <h1 id="submit-title" tabindex="-1">提交日志</h1>
-            <p class="lede">先在浏览器预检，再把日志和模型交到课程指定的共享目录。</p>
+            <p class="lede">先校验日志，再登记模型和推理脚本的位置。</p>
           </div>
-          <div class="button-row">
-            <a class="button outline" href="https://github.com/maskyuanzh/course-leaderboard#readme">实训指南</a>
-            <button class="button outline" type="button" data-rules>评测规则</button>
-          </div>
+          <a class="button outline" href="./rules.html">评测规则</a>
         </div>
         <div class="card-grid">
           <section class="card" aria-labelledby="upload-title">
@@ -358,6 +340,16 @@
                 <button class="button outline" type="button" id="speedrun-button" disabled>试读 Speedrun 日志</button>
               </div>
               <p class="small inline-status" id="file-status" role="status"></p>
+            </div>
+            <div class="handoff" id="handoff" hidden>
+              <h2>登记模型与推理脚本</h2>
+              <p class="small">填写以课程公共目录为起点的路径。下载提交单，和 TXT 一起放到本次运行目录。</p>
+              <form class="form-stack" id="handoff-form">
+                <label>权重目录<input name="model-dir" id="model-dir" autocomplete="off" spellcheck="false" required></label>
+                <label>推理脚本<input name="inference-script" id="inference-script" autocomplete="off" spellcheck="false" required></label>
+                <button type="submit" class="button outline">下载提交单</button>
+              </form>
+              <p class="small inline-status" id="handoff-status" role="status"></p>
             </div>
           </section>
           <section class="card" aria-labelledby="template-title">
@@ -408,25 +400,12 @@
     </section>
   </dialog>
 
-  <dialog id="rules-dialog" aria-labelledby="rules-title">
-    <div class="dialog-head">
-      <h2 id="rules-title">评测规则</h2>
-      <button class="button outline" type="button" data-close>关闭</button>
-    </div>
-    <dl class="rules">
-      <dt>测试集</dt><dd>课程组从若干常见 LLM 评测中抽取题目，冻结统一的教师侧测试集。</dd>
-      <dt>短标题与方法描述</dt><dd><code>Title</code> 用一行概括核心改进。紧接着在 <code>Description</code> 写相对基线的模型、数据和参数改动，续行缩进。榜单显示最佳提交的短标题，提交记录可展开完整描述。</dd>
-      <dt>文件名</dt><dd><code>team__model-tag__data-tag__params-tag__run-006.txt</code>。各段用英文小写、数字和单连字符。某一类沿用基线时用 <code>base</code>。</dd>
-      <dt>日志内容</dt><dd>记录训练元数据、<code>nvidia-smi</code> 和全部项目源码。每个 optimizer step 写一条 <code>train_loss</code>，末尾保留训练命令退出码。</dd>
-      <dt>交付与计分</dt><dd>预检通过后，把日志和模型放入课程共享提交目录。每队指定一个最终 checkpoint，教师统一评测。榜单按教师发布的 Test Loss 升序展示，同分并列。</dd>
-      <dt>Speedrun 试读</dt><dd>选择 Speedrun 的原始 .txt 文件可试读最后一条 Validation Loss。试读为独立的本地解析演示。</dd>
-    </dl>
-  </dialog>
-
   <script>
     "use strict";
 
     const $ = (id) => document.getElementById(id);
+    const tag = "[a-z0-9]+(?:-[a-z0-9]+)*";
+    const courseFilename = new RegExp(`^(${tag})__model-${tag}__data-${tag}__params-${tag}__(run-\\d{3,})\\.txt$`);
     const teamName = "Kernel Studio";
     const teamLimit = 4;
     let rankedTeams = [];
@@ -470,6 +449,7 @@
     let captain = students[0].name;
     let pendingInvite = null;
     let selectedLog = null;
+    let checkedLog = null;
 
     function cell(row, text, className = "", tag = "td") {
       const element = document.createElement(tag);
@@ -637,9 +617,7 @@
     }
 
     function parseCourseLog(filename, log) {
-      const tag = "[a-z0-9]+(?:-[a-z0-9]+)*";
-      const filenamePattern = new RegExp(`^${tag}__model-${tag}__data-${tag}__params-${tag}__run-\\d{3,}\\.txt$`);
-      if (!filenamePattern.test(filename)) throw new Error("请按模板分段命名 .txt 文件。");
+      if (!courseFilename.test(filename)) throw new Error("请按模板分段命名 .txt 文件。");
 
       const sections = log.trimStart().split(/^\[(nvidia-smi|Code|Training|Run status)\][\t ]*\r?$/gm);
       const [header, gpuTag, gpu, codeTag, code, trainingTag, training, statusTag, runStatus] = sections;
@@ -689,8 +667,49 @@
       return { title: intro[1].trim(), description, steps };
     }
 
+    function submissionDirectory(filename) {
+      const match = filename.match(courseFilename);
+      if (!match) throw new Error("请先完成日志校验。");
+      return `submissions/${match[1]}/${match[2]}`;
+    }
+
+    function buildSubmission(log, modelDir, inferenceScript) {
+      const directory = submissionDirectory(log.filename);
+      const relativePath = /^[a-zA-Z0-9][a-zA-Z0-9._-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]*)*$/;
+      modelDir = modelDir.trim().replace(/\/$/, "");
+      inferenceScript = inferenceScript.trim();
+      if (![modelDir, inferenceScript].every((path) => path.startsWith(`${directory}/`) && relativePath.test(path))) {
+        throw new Error(`两个路径都应位于 ${directory}/ 下。`);
+      }
+      if (!inferenceScript.endsWith(".py")) throw new Error("推理脚本路径应以 .py 结尾。");
+      return { version: 1, title: log.title, log: `${directory}/${log.filename}`, model_dir: modelDir, inference_script: inferenceScript };
+    }
+
+    function downloadSubmission(event) {
+      event.preventDefault();
+      if (!checkedLog) return;
+      const status = $("handoff-status");
+      try {
+        const submission = buildSubmission(checkedLog, $("model-dir").value, $("inference-script").value);
+        const blob = new Blob([JSON.stringify(submission, null, 2) + "\n"], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "submission.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        status.textContent = `把 submission.json 和原始 TXT 放到 ${submissionDirectory(checkedLog.filename)}/。`;
+        status.className = "small inline-status passed";
+      } catch (error) {
+        status.textContent = error.message;
+        status.className = "small inline-status failed";
+      }
+    }
+
     function chooseLog(log) {
       selectedLog = log;
+      checkedLog = null;
+      $("handoff").hidden = true;
+      $("handoff-status").textContent = "";
       $("file-name").textContent = log?.name ?? "尚未选择文件";
       $("file-status").textContent = "";
       $("file-status").className = "small inline-status";
@@ -718,8 +737,15 @@
         }
         const result = parseCourseLog(log.name, contents);
         records.unshift({ filename: log.name, status: "预检通过", ...result });
-        status.textContent = `预检通过。已读到 ${result.steps} 步训练记录。请将此日志与模型交到课程共享目录。`;
+        status.textContent = `预检通过。已读到 ${result.steps} 步训练记录。`;
         status.classList.add("passed");
+        if (!log.demo) {
+          checkedLog = { filename: log.name, title: result.title };
+          const directory = submissionDirectory(log.name);
+          $("model-dir").value = `${directory}/model`;
+          $("inference-script").value = `${directory}/infer.py`;
+          $("handoff").hidden = false;
+        }
       } catch (error) {
         if (!speedrun) records.unshift({ filename: log.name, status: "未通过" });
         status.textContent = `${speedrun ? "试读失败。" : "校验未通过。"}${error.message}`;
@@ -735,9 +761,6 @@
 
     for (const button of document.querySelectorAll("[data-go]")) {
       button.addEventListener("click", () => showPage(button.dataset.go));
-    }
-    for (const button of document.querySelectorAll("[data-rules]")) {
-      button.addEventListener("click", () => $("rules-dialog").showModal());
     }
     for (const button of document.querySelectorAll("[data-close]")) {
       button.addEventListener("click", () => button.closest("dialog").close());
@@ -788,10 +811,11 @@
     $("log-file").addEventListener("change", (event) => chooseLog(event.target.files[0] ?? null));
     $("sample-button").addEventListener("click", () => {
       $("log-file").value = "";
-      chooseLog({ name: sampleFilename, text: async () => sample });
+      chooseLog({ name: sampleFilename, text: async () => sample, demo: true });
     });
     $("validate-button").addEventListener("click", () => checkLog());
     $("speedrun-button").addEventListener("click", () => checkLog(true));
+    $("handoff-form").addEventListener("submit", downloadSubmission);
 
     $("sample-filename").textContent = sampleFilename;
     $("sample-text").textContent = sample;
@@ -799,6 +823,7 @@
     if (location.protocol !== "file:") loadPublishedResults();
     renderTeam();
     renderHistory();
+    if (location.hash === "#submit") showPage("submit");
   </script>
 </body>
 </html>

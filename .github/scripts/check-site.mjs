@@ -6,6 +6,8 @@ import vm from "node:vm";
 const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length, 1, "Expected one inline application script");
+assert.match(html, /href="\.\/rules\.html"/);
+assert.doesNotMatch(html, /rules-dialog|course-leaderboard#readme|class="metric"/);
 
 class Element {
   children = [];
@@ -88,6 +90,19 @@ await vm.runInContext(String.raw`
     assert.equal(records[0].steps, 3);
     assert.equal(records[0].title, formatted.title);
     assert.equal(JSON.stringify(rankedTeams), scoredBoard, "Student logs cannot edit teacher results");
+    const directory = "submissions/kernel-studio/run-006";
+    assert.equal($("handoff").hidden, false);
+    assert.equal($("model-dir").value, directory + "/model");
+    const receipt = buildSubmission(checkedLog, directory + "/model/", directory + "/infer.py");
+    assert.equal(receipt.log, directory + "/" + sampleFilename);
+    assert.equal(receipt.model_dir, directory + "/model");
+    assert.equal(receipt.inference_script, directory + "/infer.py");
+    assert.throws(() => buildSubmission(checkedLog, directory + "/../model", directory + "/infer.py"), /路径/);
+    assert.throws(() => buildSubmission(checkedLog, directory + "/model", directory + "/infer.sh"), /\.py/);
+    chooseLog({ name: sampleFilename, text: async () => sample, demo: true });
+    await checkLog();
+    assert.equal($("handoff").hidden, true);
+    assert.equal(checkedLog, null);
     if (capturedLog) assert.equal(parseCourseLog(capturedLog.name, capturedLog.contents).steps, 3);
   })()
 `, context, { filename: "smoke-test" });
