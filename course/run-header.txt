@@ -1,0 +1,9 @@
+Title: OLMo 2 从零训练基线
+Description:
+  Model: 沿用 OLMo 2 1B dense 架构，随机初始化。
+  Data: 使用课程发布的固定数据池与 tokenizer，按 2048 tokens 打包。
+  Params: AdamW，峰值学习率 0.0003，每卡 micro-batch 4，累积 4 次，随机种子 42。
+Dataset: course-train-v1
+Preprocess: {"block_tokens":2048,"eos_between_docs":true,"tokenizer":"course-tokenizer-v1"}
+Architecture: OLMo 2 1B dense causal LM, 16 layers, hidden size 2048
+Parameters: {"world_size":8,"steps":2000,"micro_batch":4,"accumulation":4,"lr":0.0003,"seed":42}

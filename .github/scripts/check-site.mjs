@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import vm from "node:vm";
 
 const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
@@ -27,6 +28,11 @@ const elements = new Map();
 const context = vm.createContext({
   assert,
   Option: class {},
+  location: { protocol: "file:" },
+  capturedLog: process.argv[2] && {
+    name: basename(process.argv[2]),
+    contents: readFileSync(process.argv[2], "utf8"),
+  },
   document: {
     getElementById(id) {
       if (!elements.has(id)) elements.set(id, new Element());
@@ -56,31 +62,34 @@ await vm.runInContext(String.raw`
     assert.equal(records.length, historyLength);
 
     const formatted = parseCourseLog(sampleFilename, sample.replaceAll("\n", "\r\n"));
-    assert.ok(formatted.title && formatted.description.includes("\n"));
+    assert.ok(formatted.title && formatted.description.includes("\n") && formatted.steps === 3);
     assert.throws(() => parseCourseLog("unsegmented.txt", sample), /分段命名/);
     assert.throws(() => readLastLoss("Test Loss: 0.22\nTest Loss: NaN", "test[ _]+loss", "Test Loss"), /有限数值/);
+    assert.throws(() => parseCourseLog(sampleFilename, sample.replace(/^step:2.*\n/m, "")), /编号/);
+    assert.throws(() => parseCourseLog(sampleFilename, sample.replace("Exit Code: 0", "Exit Code: 1")), /尚未成功/);
+    assert.throws(() => parseCourseLog(sampleFilename, sample.replace('"steps":3', '"steps":4')), /实际训练步数/);
+    assert.throws(() => parseCourseLog(sampleFilename, sample.replace('{"path":', '{"unused":')), /源码记录/);
 
-    active = true;
-    const team = { name: teamName, score: 0.2867, submitted: 2 };
-    const otherTeam = { name: "Reference Team", score: 0.2481, submitted: 2 };
-    rankedTeams.splice(0, rankedTeams.length, team, otherTeam);
-    const initialCount = team.submitted;
-    const submit = async (loss) => {
-      const log = sample + "\nTest Loss: " + loss + "\npeak memory allocated: 240 MiB";
-      chooseLog({ name: sampleFilename, text: async () => log });
-      await checkLog();
-    };
-    await submit(otherTeam.score);
+    const teacherRows = [
+      { name: "Third Team", title: "Baseline", score: 0.4 },
+      { name: teamName, title: "Reviewed", score: 0.24805 },
+      { name: "Reference Team", title: "Fixed batch", score: 0.24805 },
+    ];
+    assert.throws(() => parsePublishedResults([...teacherRows, teacherRows[0]]), /Invalid results row/);
+    rankedTeams = parsePublishedResults(teacherRows);
+    renderBoard();
     const leaders = $("standings").children.filter((row) => row.dataset.rank === 1);
     assert.equal(leaders.length, 2, "Equal losses should share first place");
-    await submit(0.24805);
     assert.equal($("standings").children[0].children.at(-1).textContent, "0.24805");
-    assert.equal(team.title, formatted.title);
-    await submit(0.4);
-    await submit("NaN");
-    assert.equal(team.score, 0.24805, "Worse and invalid runs must preserve the best score");
-    assert.equal(team.submitted, initialCount + 3, "Only valid course submissions should count");
+    const scoredBoard = JSON.stringify(rankedTeams);
+    const fakeScore = sample.replace("[Run status]", "Test Loss: 0.001\n[Run status]");
+    chooseLog({ name: sampleFilename, text: async () => fakeScore });
+    await checkLog();
+    assert.equal(records[0].steps, 3);
+    assert.equal(records[0].title, formatted.title);
+    assert.equal(JSON.stringify(rankedTeams), scoredBoard, "Student logs cannot edit teacher results");
+    if (capturedLog) assert.equal(parseCourseLog(capturedLog.name, capturedLog.contents).steps, 3);
   })()
 `, context, { filename: "smoke-test" });
 
-console.log("网页校验通过：Speedrun 试读、课程日志、同分排名和最佳分更新。");
+console.log("网页校验通过：Speedrun 试读、完整日志预检、教师成绩与同分排名。");
